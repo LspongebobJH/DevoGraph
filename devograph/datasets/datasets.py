@@ -3,13 +3,9 @@ import os
 import re
 import pandas as pd
 import torch as th
-import abc
-import traceback
-import hashlib
 
 from dgl.data import DGLDataset
 from dgl.data.utils import download, save_info, save_graphs, load_graphs, load_info
-from dgl.utils import retry_method_with_fix
 
 class CETemporalGraphKNN(DGLDataset):
     '''
