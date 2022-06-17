@@ -1,11 +1,15 @@
 import dgl
 import os
-import wget
 import re
 import pandas as pd
 import torch as th
+import abc
+import traceback
+import hashlib
 
 from dgl.data import DGLDataset
+from dgl.data.utils import download, get_download_dir, makedirs
+from dgl.utils import retry_method_with_fix
 
 class CETemporalGraphKNN(DGLDataset):
     '''
@@ -16,19 +20,17 @@ class CETemporalGraphKNN(DGLDataset):
                  force_reload=False, verbose=False, transform=None, 
                  knn_k=4, knn_algorithm='bruteforce-blas', knn_dist='euclidean', 
                  time_start=None, time_end=None):
-        super().__init__(name, url, raw_dir, save_dir, hash_key, 
-                         force_reload, verbose, transform)
-        self.name = name
-        self.url = url
-        self.raw_dir = raw_dir
-        self.save_dir = save_dir
         self.knn_k = knn_k
         self.knn_algorithm=knn_algorithm
         self.knn_dist=knn_dist
         self.time_start = time_start
         self.time_end = time_end
         self.graphs = []
-    
+
+        super().__init__(name, url, raw_dir, save_dir, hash_key, 
+                         force_reload, verbose, transform)
+        
+        
     def has_cache(self):
         graph_path = os.path.join(self.save_dir,
                                   self.name + '.bin')
@@ -38,15 +40,14 @@ class CETemporalGraphKNN(DGLDataset):
         return False
 
     def download(self):
-        file_name = wget.download(self.url, out=self.raw_path)
-        print(f'Finish downloading \
-            {re.findall(r"([^\\]*\.csv)", file_name)}'
-        )
+        file_name = download(self.url, self.raw_path)
+        file_name = re.findall(r"([^\/]*\.csv)", file_name)[0]
+        print(f'Finish downloading {file_name}')
 
     def process(self):
-        raw_data = pd.read_csv(self.raw_path)
+        raw_data:pd.DataFrame = pd.read_csv(self.raw_path)
         time_start = self.time_start if self.time_start is not None else 0
-        time_end = self.time_end if self.time_end is not None else 0
+        time_end = self.time_end if self.time_end is not None else raw_data.time.max()
 
         for time in range(time_start, time_end+1):
             _raw_data = raw_data[raw_data.time == time]
@@ -73,4 +74,13 @@ class CETemporalGraphKNN(DGLDataset):
     def raw_path(self):
         return f'{self.raw_dir}CE_raw_data.csv'
 
-        
+    @property
+    def raw_name(self):
+        return 'CE_raw_data.csv'
+
+# class CEDirectedGraph:
+    
+if __name__ == '__main__':
+    cet_temp_g_knn = CETemporalGraphKNN(url='https://raw.githubusercontent.com/devoworm/DevoWorm/master/Caenorhabditis%20elegans%20raw%20nuclei%20data/raw-data-part-1a.csv')
+    graphs = cet_temp_g_knn.load_graphs()
+    print("Done testing")
