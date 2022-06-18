@@ -3,10 +3,12 @@ import os
 import re
 import pandas as pd
 import torch as th
+import numpy as np
 
 from dgl.data import DGLDataset
 from dgl.data.utils import download, save_info, save_graphs, load_graphs, load_info
 
+home_dir = os.environ['HOME']+'/'
 class CETemporalGraphKNN(DGLDataset):
     '''
     The C. elegans Temporal Graph built on given the csv file using KNN method.
@@ -23,6 +25,7 @@ class CETemporalGraphKNN(DGLDataset):
         self.time_end = time_end
         self.graphs = []
         self.info = {'cell':[]}
+        self.batch_graph = None
 
         super().__init__(name, url, raw_dir, save_dir, hash_key, 
                          force_reload, verbose, transform)
@@ -70,7 +73,10 @@ class CETemporalGraphKNN(DGLDataset):
     def load(self):
         self.graphs, _ = load_graphs(f'{self.save_dir}{self.name}.bin')
         self.info = load_info(f'{self.save_dir}{self.name}_info.pkl')
-    
+
+    def set_batch_graph(self, batch_graph):
+        self.batch_graph = batch_graph
+
     def __getitem__(self, idx):
         return self.graphs[idx]
 
@@ -79,16 +85,72 @@ class CETemporalGraphKNN(DGLDataset):
         
     @property
     def raw_path(self):
-        return f'{self.raw_dir}CE_raw_data.csv'
+        return f'{self.raw_dir}{self.raw_name}'
 
     @property
     def raw_name(self):
         return 'CE_raw_data.csv'
 
-# class CEDirectedGraph:
+def to_temporal_directed(cell_temp_datasets, ce_lineage_path):
+    '''
+    Given C elegans temporal graph datasets, these API builds a directed graph linking 
+    daughter and mother cells between successive graphs. A new node attribute in 'ndata'
+    that is the relative timestamp of each graph(frame) will be built for differentiating
+    different frames in the temporal directed graph.
+
+    Note that the same cell across successive frames will be connected as well.
+
+    ce_temp_datasets: CETemporalGraphKNN
+    ce_lineage_path: pickle path of 
+            the C elegans lineage csv file containing "mother" and "daughter" columns, and each
+            column contains cell names
+    
+    return: a directed graph
+    '''
+    
+    info = cell_temp_datasets.info
+    lineage = pd.read_csv(ce_lineage_path, usecols=['daughter', 'mother'])
+    
+    for i, g in enumerate(cell_temp_datasets):
+        g.ndata['time'] = th.full((g.number_of_nodes(), 1), i)
+
+    res_g:dgl.DGLGraph = dgl.batch(datasets)
+    _batch_node_interval = th.cumsum(res_g.batch_num_nodes(), dim=0)
+    batch_node_interval = [(0 if i == 0 else _batch_node_interval[i-1].item(), _batch_node_interval[i].item()) 
+            for i in range(len(_batch_node_interval))]
+
+    for i in range(1, len(batch_node_interval)):
+        daughter_list, mother_list = info['cell'][i], info['cell'][i-1]
+        daughter_interval, mother_interval = batch_node_interval[i], batch_node_interval[i-1]
+        daughter_idx:np.ndarray = np.array([])
+        mother_idx:np.ndarray = np.array([])
+
+        for j, daughter in enumerate(daughter_list):
+            if daughter not in lineage.daughter.values:
+                print(f'daughter cel {daughter} is not in the daughter column of lineage tree, skip it.')
+                continue
+            mother = lineage[lineage.daughter == daughter].mother.unique()[0]
+            # TODO: the daughter cell in the last frame will be connected to the cell in the next frame
+            if mother not in mother_list:
+                print(f'mother cell {mother} of the daughter cell {daughter} in the {i}th frame '
+                      f'is not in the the {i-1}th frame of the input temporal graphs, skip it')
+                continue
+            _mother_idx = (np.where((np.array(mother_list) == mother) | 
+                    (np.array(mother_list) == daughter))[0] + \
+                    mother_interval[0]) # left
+            mother_idx = np.append(mother_idx, _mother_idx)
+            daughter_idx = np.append(daughter_idx, 
+                    np.repeat(j + daughter_interval[0], len(_mother_idx)))
+        mother_idx = mother_idx.astype(np.int32)
+        daughter_idx = daughter_idx.astype(np.int32)
+        res_g = dgl.add_edges(res_g, mother_idx, daughter_idx)
+
+    return res_g 
     
 if __name__ == '__main__':
     datasets = CETemporalGraphKNN(
-        time_start=0, time_end=5,
+        time_start=0, time_end=3,
         url='https://raw.githubusercontent.com/LspongebobJH/DevoGraph/main/data/CE_raw_data.csv?token=GHSAT0AAAAAABMX6RJRRFC2U5QOCZXHNBVYYVL5Y2A')
+    res_g = to_temporal_directed(datasets, '~/.CEData/CE_lineage_data.csv')
+    datasets.set_batch_graph(res_g)
     print("Done testing")
