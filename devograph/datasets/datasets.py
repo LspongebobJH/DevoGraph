@@ -77,6 +77,9 @@ class CETemporalGraphKNN(DGLDataset):
     def set_batch_graph(self, batch_graph):
         self.batch_graph = batch_graph
 
+    def set_info(self, new_info:dict):
+        self.info.update(new_info)
+
     def __getitem__(self, idx):
         return self.graphs[idx]
 
@@ -91,7 +94,7 @@ class CETemporalGraphKNN(DGLDataset):
     def raw_name(self):
         return 'CE_raw_data.csv'
 
-def to_temporal_directed(cell_temp_datasets, ce_lineage_path):
+def to_temporal_directed(cell_temp_datasets, ce_lineage_path, verbose=False):
     '''
     Given C elegans temporal graph datasets, these API builds a directed graph linking 
     daughter and mother cells between successive graphs. A new node attribute in 'ndata'
@@ -114,7 +117,7 @@ def to_temporal_directed(cell_temp_datasets, ce_lineage_path):
     for i, g in enumerate(cell_temp_datasets):
         g.ndata['time'] = th.full((g.number_of_nodes(), 1), i)
 
-    res_g:dgl.DGLGraph = dgl.batch(datasets)
+    res_g:dgl.DGLGraph = dgl.batch(cell_temp_datasets)
     _batch_node_interval = th.cumsum(res_g.batch_num_nodes(), dim=0)
     batch_node_interval = [(0 if i == 0 else _batch_node_interval[i-1].item(), _batch_node_interval[i].item()) 
             for i in range(len(_batch_node_interval))]
@@ -127,13 +130,15 @@ def to_temporal_directed(cell_temp_datasets, ce_lineage_path):
 
         for j, daughter in enumerate(daughter_list):
             if daughter not in lineage.daughter.values:
-                print(f'daughter cel {daughter} is not in the daughter column of lineage tree, skip it.')
+                if verbose:
+                    print(f'daughter cel {daughter} is not in the daughter column of lineage tree, skip it.')
                 continue
             mother = lineage[lineage.daughter == daughter].mother.unique()[0]
             # TODO: the daughter cell in the last frame will be connected to the cell in the next frame
             if mother not in mother_list:
-                print(f'mother cell {mother} of the daughter cell {daughter} in the {i}th frame '
-                      f'is not in the the {i-1}th frame of the input temporal graphs, skip it')
+                if verbose:
+                    print(f'mother cell {mother} of the daughter cell {daughter} in the {i}th frame '
+                        f'is not in the the {i-1}th frame of the input temporal graphs, skip it')
                 continue
             _mother_idx = (np.where((np.array(mother_list) == mother) | 
                     (np.array(mother_list) == daughter))[0] + \
@@ -145,12 +150,13 @@ def to_temporal_directed(cell_temp_datasets, ce_lineage_path):
         daughter_idx = daughter_idx.astype(np.int32)
         res_g = dgl.add_edges(res_g, mother_idx, daughter_idx)
 
-    return res_g 
+    return res_g, batch_node_interval 
     
 if __name__ == '__main__':
     datasets = CETemporalGraphKNN(
         time_start=0, time_end=3,
         url='https://raw.githubusercontent.com/LspongebobJH/DevoGraph/main/data/CE_raw_data.csv?token=GHSAT0AAAAAABMX6RJRRFC2U5QOCZXHNBVYYVL5Y2A')
-    res_g = to_temporal_directed(datasets, '~/.CEData/CE_lineage_data.csv')
+    res_g, batch_node_interval = to_temporal_directed(datasets, '~/.CEData/CE_lineage_data.csv')
     datasets.set_batch_graph(res_g)
+    datasets.set_info({'batch_node_interval': batch_node_interval})
     print("Done testing")
