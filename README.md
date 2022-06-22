@@ -20,7 +20,7 @@
 > The columns in the csv file can be in any order. The same below.
 
 ### Stage 2: convert processed data into temporal (directed) graph(s)
-* With the csv file specified in stage 1 as the input file, stage 2 converts it into temporal graphs based on [DGL](https://www.dgl.ai/), which is a common-used graph deep learning library. Each graph of the generated temporal graphs corresponds to a certain frame of the input video of stage 1. Given cell lineage tree csv file specified as the following format, DevoGraph provides API to connect mother cells and daughter cells across successive graphs, and thus obtain a temporal and directed graph. Please refer to `/stage_2/stage_2.ipynb` to check details of this stage.
+* With the csv file specified in stage 1 as the input file, stage 2 converts it into temporal graphs based on [DGL](https://www.dgl.ai/), which is a common-used graph deep learning library. Each graph of the generated temporal graphs corresponds to a certain frame of the input video of stage 1. Given cell lineage tree csv file (unnecessary, **not output of stage 1**) specified as the following format, DevoGraph provides API to connect mother cells and daughter cells across successive graphs, and thus obtain a temporal and directed graph. Please refer to `/stage_2/stage_2.ipynb` to check details of this stage.
 
 |dauguter| mother |
 | ---- | ---- |
