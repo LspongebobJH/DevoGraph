@@ -17,7 +17,7 @@ class CETemporalGraphKNN(DGLDataset):
     def __init__(self, name='CETemporalGraph', url=None, raw_dir=f'{home_dir}.CEData/', save_dir=f'{home_dir}.CEData/', 
                  hash_key=(), force_reload=False, verbose=False, transform=None, 
                  knn_k=4, knn_algorithm='bruteforce-blas', knn_dist='euclidean', 
-                 time_start=None, time_end=None):
+                 time_start=None, time_end=None, columns=[]):
         self.knn_k = knn_k
         self.knn_algorithm=knn_algorithm
         self.knn_dist=knn_dist
@@ -26,6 +26,7 @@ class CETemporalGraphKNN(DGLDataset):
         self.graphs = []
         self.info = {'cell':[]}
         self.batch_graph = None
+        self.columns=columns
 
         super().__init__(name, url, raw_dir, save_dir, hash_key, 
                          force_reload, verbose, transform)
@@ -62,7 +63,8 @@ class CETemporalGraphKNN(DGLDataset):
             pos = th.tensor(_raw_data[['x', 'y', 'z']].to_numpy())
             graph = dgl.knn_graph(pos, self.knn_k, self.knn_algorithm, self.knn_dist)
             graph.ndata['pos'] = pos
-            graph.ndata['size'] = th.tensor(_raw_data['size'].to_numpy())
+            for col in self.columns:
+                graph.ndata[col] = th.tensor(_raw_data['size'].to_numpy())
             self.info['cell'].append(_raw_data['cell'].to_list())
             self.graphs.append(graph)
         
@@ -154,7 +156,7 @@ def to_temporal_directed(cell_temp_datasets, ce_lineage_path, verbose=False):
     
 if __name__ == '__main__':
     datasets = CETemporalGraphKNN(
-        time_start=0, time_end=3,
+        time_start=0, time_end=3, columns=['size'],
         url='https://raw.githubusercontent.com/LspongebobJH/DevoGraph/main/data/CE_raw_data.csv?token=GHSAT0AAAAAABMX6RJRRFC2U5QOCZXHNBVYYVL5Y2A')
     res_g, batch_node_interval = to_temporal_directed(datasets, '~/.CEData/CE_lineage_data.csv')
     datasets.set_batch_graph(res_g)
