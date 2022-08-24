@@ -1,0 +1,3 @@
+[submodule "stage_1/cell-tracker-gnn"]
+	path = stage_1/cell-tracker-gnn
+	url = https://github.com/jianglonghui/cell-tracker-gnn
