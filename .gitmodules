@@ -1,4 +1,0 @@
-[submodule "devolearn"]
-	path = devolearn
-	url = https://github.com/watarungurunnn/devolearn
-	branch = wataru/epic
