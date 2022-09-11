@@ -5,25 +5,18 @@
 ## Developers
 * GSoC 2022 participants: [Jiahang Li](https://github.com/LspongebobJH), [Wataru Kawakami](https://github.com/watarungurunnn)
 * Mentors: [Bradly Alicea](https://bradly-alicea.weebly.com/), [Jesse Parent](https://jesparent.github.io/)
+* External contributors: [Longhui Jiang](https://github.com/jianglonghui)
 
-## Overall Design
-### Stage 1: convert input data into processed data
-* The input data should be a video of embryogenesis of *C. elegans*. In the stage, the DevoGraph extracts 3-d positions of nuclei of *C. elegans* along the time series of the video, which will be organized into a csv file. The csv file follows the following format:
+## Contributions
+### Jiahang Li
+* Design a KNN-based method constructing ****temporal** graphs**. The method is implemented in `./devograph/datasets/datasets.py`. These temporal graphs are based on 3d positions of cell centroids and mimic cell developmental process of *C. elegans*. Each node represents a cell at a certain frame, and edges at the same frame connect neighbors according to KNN while edges across different frames connect mother and daughter cells. Please refer to `./stage_2/stage_2.ipynb` to check more details. 
+* Refactor codes of constructing ****directed** graphs** initially implemented by [cell-track-gnn](https://github.com/talbenha/cell-tracker-gnn). The re-implementation is in `./devograph/datasets/datasets1.py`. This method gives each edge an direction implying the relationship between mother and daughter cells.
+* Refactor codes of a **directed GNN** initially implemented by [cell-track-gnn](https://github.com/talbenha/cell-tracker-gnn). The re-implementation is in `./devograph/models/ct.py`. The GNN is based on directed graphs and incorporates information of nodes and edges to aggregate messages.
+* Both of re-implementations above abstract the core logic, remove redundant and unrelated codes and unnecessary third-party frameworks, and finally provide easy-to-use APIs.
+* Design the whole pipeline of DevoGraph presented in `./miscellaneous/GSoC 2022 22.1.pdf`.
+* Assign tasks to other participants.
 
-|cell| time | x | y | z |
-| ---- | ---- | ---- | ---- | ---- |
-| AB | 1 | 454.0 | 286.0 | 14.0 |
-| ... | ... | ... | ... | ... |
+### Wataru Kawakami
+* Please refer to [Wataru Kawakami](https://github.com/watarungurunnn/GSoC2022_submission) to check his contributions.
 
-* `cell` is the name of the cell, `time` is the timestamp when the information of the cell was observed, `x, y, z` is 3-d position of the cell that was observed at `time`. Though the csv file may contains other columns, these five columns are necessary.
-
-> The columns in the csv file can be in any order. The same below.
-
-### Stage 2: convert processed data into temporal (directed) graph(s)
-* With the csv file specified in stage 1 as the input file, stage 2 converts it into temporal graphs based on [DGL](https://www.dgl.ai/), which is a common-used graph deep learning library. Each graph of the generated temporal graphs corresponds to a certain frame of the input video of stage 1. Given cell lineage tree csv file (unnecessary, **not output of stage 1**) specified as the following format, DevoGraph provides API to connect mother cells and daughter cells across successive graphs, and thus obtain a temporal and directed graph. Please refer to `/stage_2/stage_2.ipynb` to check details of this stage.
-
-|dauguter| mother |
-| ---- | ---- |
-| AB | P0 |
-| ... | ... |
-
+### Longhui Jiang
