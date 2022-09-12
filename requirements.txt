@@ -1,1 +1,4 @@
-pytorch==1.7.0
+git+https://github.com/watarungurunnn/devolearn
+torch==1.7.0
+dgl
+jupyter
