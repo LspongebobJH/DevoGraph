@@ -20,3 +20,5 @@
 * Please refer to [Wataru Kawakami](https://github.com/watarungurunnn/GSoC2022_submission) to check his contributions.
 
 ### Longhui Jiang
+* Refactor codes of pre-processing 2-D images(frames of videos) and converting them into location information of cells stored in csv files. The re-implementation is based on [cell-track-gnn](https://github.com/talbenha/cell-tracker-gnn). Please refer to `./stage_1/` and `./stage_1/stage1_by_longhui` for more details.
+* Note that in `./stage_1/`, `./stage_1/stage1_by_longhui` is implemented by Longhui and other files are implemented by Wataru.
